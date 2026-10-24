@@ -1,0 +1,15 @@
+[project]
+name = "colony"
+version = "0.1.0"
+description = "The application layer of a distributed system, organized like an ant colony"
+readme = "README.md"
+requires-python = ">=3.14"
+dependencies = [
+    "fastapi>=0.162.0",
+    "pydantic-settings>=2.16.1",
+    "reliable-redis",
+    "uvicorn[standard]>=0.54.0",
+]
+
+[tool.uv.sources]
+reliable-redis = { git = "https://github.com/Gagan-Polukonda/reliable-redis" }
