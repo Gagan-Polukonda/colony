@@ -6,7 +6,7 @@ from fastapi import FastAPI, HTTPException, Depends
 from fastapi.security import APIKeyHeader
 from fastapi.responses import PlainTextResponse
 
-from reliable_redis.core.client import RedisClient
+from reliable_redis.core.client import KVStore, RedisClient
 from reliable_redis.queue import JobQueue
 
 
@@ -31,6 +31,7 @@ def verify_api_key(x_api_key: str = Depends(api_key_header)) -> str:
 async def lifespan(app: FastAPI):
     with RedisClient() as r:
         app.state.queue = JobQueue(r, name="jobs")
+        app.state.owners = KVStore(r, prefix="job_owner")
         yield
 
 app = FastAPI(
@@ -52,8 +53,12 @@ def health():
 def submit_jobs(job: dict, user: str = Depends(verify_api_key)):
     app.state.queue.enqueue(job)
     job["user"] = user
+    app.state.owners.set(job["id"], user)
     return {"id": job["id"], "user":job["user"]}
 
-@app.get("/jobs/{job_id}", dependencies=[Depends(verify_api_key)])
-def get_job_status(job_id: str):
+@app.get("/jobs/{job_id}")
+def get_job_status(job_id: str, user: str = Depends(verify_api_key)):
+    owner = app.state.owners.get(job_id)
+    if owner != user:
+        raise HTTPException(status_code=403, detail="Not your job")
     return {"id": job_id, "status": app.state.queue.status.get(job_id)}

@@ -317,7 +317,7 @@ wheels = [
 [[package]]
 name = "reliable-redis"
 version = "0.1.0"
-source = { git = "https://github.com/Gagan-Polukonda/reliable-redis#ff12480f3374f4fe03317efdd8b25e1b1f7eda6c" }
+source = { git = "https://github.com/Gagan-Polukonda/reliable-redis#777c49132dcabc01c49b4944de99f27bb03a91a5" }
 dependencies = [
     { name = "redis" },
 ]
