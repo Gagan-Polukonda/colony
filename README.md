@@ -74,3 +74,21 @@ uv run uvicorn main:app --reload --reload-include ".env"
 ```
 
 Then open `http://127.0.0.1:8000/docs`.
+
+## How it works
+
+```mermaid
+flowchart LR
+    A[Request] --> B{Valid key?}
+    B -- no --> C[401]:::failed
+    B -- yes --> D{Route}
+    D -- POST /jobs --> E[Store owner]:::active
+    E --> F[200: job id]:::success
+    D -- GET /jobs/id --> G{Owns job?}
+    G -- no --> H[403]:::failed
+    G -- yes --> I[200: status]:::success
+
+    classDef success fill:#d4f4dd,stroke:#2f9e44,color:#1a1a1a
+    classDef failed fill:#ffe3e3,stroke:#c92a2a,color:#1a1a1a
+    classDef active fill:#fff3bf,stroke:#f08c00,color:#1a1a1a
+```
