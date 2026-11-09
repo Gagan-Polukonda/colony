@@ -1,30 +1,26 @@
 import secrets
 from contextlib import asynccontextmanager
-from pydantic_settings import BaseSettings
+from config import settings
 
 from fastapi import FastAPI, HTTPException, Depends
 from fastapi.security import APIKeyHeader
 from fastapi.responses import PlainTextResponse
 
+from db import SessionLocal
+from models import Forager
+
 from reliable_redis.core.client import KVStore, RedisClient
 from reliable_redis.queue import JobQueue
-
-
-class Settings(BaseSettings):
-    api_keys: dict[str, str]
-
-    class Config:
-        env_file = ".env"
-
-settings = Settings()
 
 api_key_header = APIKeyHeader(name="X-API-Key")
 
 def verify_api_key(x_api_key: str = Depends(api_key_header)) -> str:
-    for key, user in settings.api_keys.items():
-        if secrets.compare_digest(x_api_key, key):
-            return user
-    raise HTTPException(status_code=401, detail="Invalid API key")
+    db = SessionLocal()
+    forager = db.query(Forager).filter_by(api_key=x_api_key).first()
+    db.close()
+    if forager is None:
+        raise HTTPException(status_code=401, detail="Invalid API key")
+    return forager.username
 
 
 @asynccontextmanager
