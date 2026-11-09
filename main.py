@@ -1,26 +1,12 @@
-import secrets
 from contextlib import asynccontextmanager
-from config import settings
 
-from fastapi import FastAPI, HTTPException, Depends
-from fastapi.security import APIKeyHeader
+from fastapi import FastAPI
 from fastapi.responses import PlainTextResponse
 
-from db import SessionLocal
-from models import Forager
+import jobs
 
 from reliable_redis.core.client import KVStore, RedisClient
 from reliable_redis.queue import JobQueue
-
-api_key_header = APIKeyHeader(name="X-API-Key")
-
-def verify_api_key(x_api_key: str = Depends(api_key_header)) -> str:
-    db = SessionLocal()
-    forager = db.query(Forager).filter_by(api_key=x_api_key).first()
-    db.close()
-    if forager is None:
-        raise HTTPException(status_code=401, detail="Invalid API key")
-    return forager.username
 
 
 @asynccontextmanager
@@ -36,6 +22,8 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+app.include_router(jobs.router)
+
 
 @app.get("/", response_class=PlainTextResponse)
 def root():
@@ -44,17 +32,3 @@ def root():
 @app.get("/health")
 def health():
     return {"status": "ok"}
-
-@app.post("/jobs")
-def submit_jobs(job: dict, user: str = Depends(verify_api_key)):
-    app.state.queue.enqueue(job)
-    job["user"] = user
-    app.state.owners.set(job["id"], user)
-    return {"id": job["id"], "user":job["user"]}
-
-@app.get("/jobs/{job_id}")
-def get_job_status(job_id: str, user: str = Depends(verify_api_key)):
-    owner = app.state.owners.get(job_id)
-    if owner != user:
-        raise HTTPException(status_code=403, detail="Not your job")
-    return {"id": job_id, "status": app.state.queue.status.get(job_id)}
